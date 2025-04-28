@@ -49,6 +49,14 @@ ENV NODE_ENV=production
 # Default port, can be overridden by PORT env var
 ENV PORT=3000
 
+# Copy the entire node_modules directory from the builder stage
+# This includes all dependencies, devDependencies (if needed by standalone output),
+# and native addons installed correctly by pnpm.
+COPY --from=builder /app/node_modules /app/node_modules
+# Depending on pnpm version and structure, you might need to copy the store.
+# Test if the above COPY is sufficient first. If not, uncomment the line below.
+# COPY --from=builder /app/.pnpm /app/.pnpm
+
 # Copy necessary artifacts from the builder stage's standalone output
 COPY --from=builder /app/.next/standalone ./
 # Copy static assets and public files
@@ -59,12 +67,9 @@ COPY --from=builder /app/.mcp-config.json ./.mcp-config.json
 # Copy the compiled custom MCP server
 COPY --from=builder /app/custom-mcp-server/dist ./custom-mcp-server/dist
 
-# --- Fix for @libsql/client native addons ---
-# Copy the required native addon from the builder stage's node_modules
-# Adjust the source path based on pnpm's structure and the @libsql version
-# Find the exact path in the builder stage if this doesn't work (e.g., using `docker build --progress=plain ...` and checking logs)
-COPY --from=builder /app/node_modules/.pnpm/libsql*/node_modules/@libsql/linux-x64-musl/ \
-     ./node_modules/.pnpm/libsql*/node_modules/@libsql/linux-x64-musl/
+# Remove the specific copy for the native addon - it's included in the full node_modules copy
+# COPY --from=builder /app/node_modules/.pnpm/libsql*/node_modules/@libsql/linux-x64-musl/ \
+#      ./node_modules/.pnpm/libsql*/node_modules/@libsql/linux-x64-musl/
 
 # Expose the port the app runs on
 EXPOSE 3000
