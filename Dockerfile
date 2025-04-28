@@ -66,6 +66,9 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.mcp-config.json ./.mcp-config.json
 # Copy the compiled custom MCP server
 COPY --from=builder /app/custom-mcp-server/dist ./custom-mcp-server/dist
+# Copy Drizzle configuration file and database schema/migration files
+COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
+COPY --from=builder /app/src/lib/db ./src/lib/db
 
 # Remove the specific copy for the native addon - it's included in the full node_modules copy
 # COPY --from=builder /app/node_modules/.pnpm/libsql*/node_modules/@libsql/linux-x64-musl/ \
