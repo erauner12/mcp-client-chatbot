@@ -49,8 +49,11 @@ ENV NODE_ENV=production
 # Default port, can be overridden by PORT env var
 ENV PORT=3000
 
-# Install runtime dependencies: git (might be needed by some packages), sqlite (for CLI verification/debugging)
-RUN apk add --no-cache git sqlite
+# Install runtime dependencies: git, sqlite, and npm (to install pnpm)
+RUN apk add --no-cache git sqlite npm
+
+# Install pnpm globally using npm
+RUN npm install -g pnpm
 
 # Copy the entire node_modules directory from the builder stage
 # This includes all dependencies, devDependencies (if needed by standalone output),
