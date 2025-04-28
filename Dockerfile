@@ -49,6 +49,9 @@ ENV NODE_ENV=production
 # Default port, can be overridden by PORT env var
 ENV PORT=3000
 
+# Install runtime dependencies: git (might be needed by some packages), sqlite (for CLI verification/debugging)
+RUN apk add --no-cache git sqlite
+
 # Copy the entire node_modules directory from the builder stage
 # This includes all dependencies, devDependencies (if needed by standalone output),
 # and native addons installed correctly by pnpm.
@@ -69,14 +72,18 @@ COPY --from=builder /app/custom-mcp-server/dist ./custom-mcp-server/dist
 # Copy Drizzle configuration file and database schema/migration files
 COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
 COPY --from=builder /app/src/lib/db ./src/lib/db
+# Copy the entrypoint script
+COPY --from=builder /app/entrypoint.sh ./entrypoint.sh
 
-# Remove the specific copy for the native addon - it's included in the full node_modules copy
-# COPY --from=builder /app/node_modules/.pnpm/libsql*/node_modules/@libsql/linux-x64-musl/ \
-#      ./node_modules/.pnpm/libsql*/node_modules/@libsql/linux-x64-musl/
+# Ensure the entrypoint script is executable
+RUN chmod +x ./entrypoint.sh
 
 # Expose the port the app runs on
 EXPOSE 3000
 
+# Set the entrypoint script to run Drizzle migrations first
+ENTRYPOINT ["./entrypoint.sh"]
+
 # Command to run the standalone server output by Next.js build
-# This assumes the output includes a server.js entrypoint
+# This will be passed as arguments ("$@") to the entrypoint script
 CMD ["node", "server.js"]

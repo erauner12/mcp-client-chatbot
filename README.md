@@ -5,7 +5,7 @@
 [![Local First](https://img.shields.io/badge/Local-First-blueviolet)](#)
 [![MCP Supported](https://img.shields.io/badge/MCP-Supported-00c853)](https://modelcontextprotocol.io/introduction)
 
-**MCP Client Chatbot** is a versatile chat interface that supports various AI model providers like [OpenAI](https://openai.com/), [Anthropic](https://www.anthropic.com/), [Google](https://ai.google.dev/), and [Ollama](https://ollama.com/). **It is designed for instant execution in 100% local environments without complex configuration**, enabling users to fully control computing resources on their personal computer or server.
+**MCP Client Chatbot** is a versatile chat interface that supports various AI model providers like [OpenAI](https://openai.com/), [Anthropic](https://www.anthropic.com/), [Google](https://ai.google.dev/), and [Ollama](https://ollama.com/). **It is designed for instant execution in 100% local environments without complex configuration**, enabling users to fully control computing resources on their personal computer or server. It now persists chat history locally using SQLite.
 
 > Built with [Vercel AI SDK](https://sdk.vercel.ai) and [Next.js](https://nextjs.org/), this app adopts modern patterns for building AI chat interfaces. Leverage the power of [Model Context Protocol (MCP)](https://modelcontextprotocol.io/introduction) to seamlessly integrate external tools into your chat experience.
 
@@ -24,11 +24,13 @@ MCP Client Chatbot is a 100% community-driven open source project.
   - [✨ Key Features](#-key-features)
   - [🚀 Getting Started](#-getting-started)
     - [Environment Variables](#environment-variables)
+    - [Database Setup](#database-setup)
     - [MCP Server Setup](#mcp-server-setup)
   - [🐳 Docker Deployment](#-docker-deployment)
     - [Building the Image](#building-the-image)
     - [Pushing to Docker Hub](#pushing-to-docker-hub)
     - [Running the Container](#running-the-container)
+    - [Data Persistence](#data-persistence)
     - [Optional PostgreSQL Container](#optional-postgresql-container)
   - [💡 Use Cases](#-use-cases)
   - [🗺️ Roadmap: Upcoming Features](#️-roadmap-upcoming-features)
@@ -89,13 +91,13 @@ MCP tools independently from chat sessions for easier development and debugging.
 ## ✨ Key Features
 
 * **💻 100% Local Execution:** Run directly on your PC or server without complex deployment, fully utilizing and controlling your computing resources.
+* **💾 Persistent Chat History:** Chat threads and messages are saved locally using SQLite (PostgreSQL optional).
 * **🤖 Multiple AI Model Support:** Flexibly switch between providers like OpenAI, Anthropic, Google AI, and Ollama.
 * **🛠️ Powerful MCP Integration:** Seamlessly connect external tools (browser automation, database operations, etc.) into chat via Model Context Protocol.
 * **🚀 Standalone Tool Tester:** Test and debug MCP tools separately from the main chat interface.
 * **💬 Intuitive Mentions:** Trigger available tools with `@` in the input field.
 * **⚙️ Easy Server Setup:** Configure MCP connections via UI or `.mcp-config.json` file.
 * **📄 Markdown UI:** Communicate in a clean, readable markdown-based interface.
-* **💾 Zero-Setup Local DB:** Uses SQLite by default for local storage (PostgreSQL also supported).
 * **🧩 Custom MCP Server Support:** Modify the built-in MCP server logic or create your own.
 
 ## 🚀 Getting Started
@@ -106,7 +108,7 @@ This project uses [pnpm](https://pnpm.io/) as the recommended package manager.
 # 1. Install dependencies
 pnpm i
 
-# 2. Initialize project (creates .env, sets up DB)
+# 2. Initialize project (creates .env, sets up DB, generates MCP config)
 pnpm initial
 
 # 3. Start dev server
@@ -128,11 +130,28 @@ OPENAI_API_KEY=****
 XAI_API_KEY=****
 ANTHROPIC_API_KEY=****
 POSTGRES_URL=postgres://postgres:postgres@localhost:5432/chatbot
+# Path for SQLite DB file (relative to project root during dev)
 FILEBASE_URL=file:node_modules/local.db
+# Set to true for SQLite (default), false for PostgreSQL
 USE_FILE_SYSTEM_DB=true
+# Secret for session encryption
+NEXTAUTH_SECRET=YOUR_RANDOM_SECRET_HERE
 ```
+**Important:** Generate a strong random string for `NEXTAUTH_SECRET`.
 
-SQLite is the default DB (`db.sqlite`). To use PostgreSQL, set `USE_FILE_SYSTEM_DB=false` and define `POSTGRES_URL` in `.env`. Ensure your Postgres server is running and accessible.
+-----
+
+### Database Setup
+
+*   **SQLite (Default):**
+    *   Set `USE_FILE_SYSTEM_DB=true` in `.env`.
+    *   The database file is specified by `FILEBASE_URL` (e.g., `file:node_modules/local.db` for development).
+    *   The `pnpm initial` command runs `pnpm db:migrate` which uses Drizzle to create/update the necessary tables in the SQLite file based on `src/lib/db/schema.sqlite.ts`.
+*   **PostgreSQL (Optional):**
+    *   Set `USE_FILE_SYSTEM_DB=false` in `.env`.
+    *   Define `POSTGRES_URL` in `.env`.
+    *   Ensure your Postgres server is running and accessible.
+    *   Run `pnpm db:push` (or `pnpm db:migrate` if using migration files) manually to set up the schema defined in `src/lib/db/schema.pg.ts`.
 
 -----
 
@@ -161,7 +180,7 @@ pnpm docker:build
 ```
 
 This command executes:
-`docker build -t erauner12/mcp-client-chatbot:latest -t erauner12/mcp-client-chatbot:$(git rev-parse --short HEAD) .`
+`docker build --platform linux/amd64 --build-arg USE_FILE_SYSTEM_DB=true --build-arg FILEBASE_URL=file:/app/data/local.db -t erauner12/mcp-client-chatbot:latest -t erauner12/mcp-client-chatbot:$(git rev-parse --short HEAD) .`
 
 ### Pushing to Docker Hub
 
@@ -192,9 +211,13 @@ docker run -it --rm -p 3000:3000 \
 ```
 
 **Notes:**
-- Replace `YOUR_OPENAI_KEY` and `YOUR_RANDOM_SECRET` with actual values. Generate a strong secret for `NEXTAUTH_SECRET`.
-- The `-v mcp_chatbot_data:/app/data` line creates a named volume `mcp_chatbot_data` to persist the SQLite database outside the container. The internal path `/app/data` is used for the volume mount point; ensure `FILEBASE_URL` points within this mounted directory (e.g., `file:/app/data/local.db`).
-- If using PostgreSQL, ensure the `POSTGRES_URL` environment variable points to your running Postgres instance (e.g., `postgres://user:pass@host:port/db`) and set `USE_FILE_SYSTEM_DB=false`.
+- Replace `YOUR_OPENAI_KEY` and `YOUR_RANDOM_SECRET` with actual values.
+- The container now includes an entrypoint script that automatically runs database migrations (`pnpm db:push`) on startup if `USE_FILE_SYSTEM_DB=true`.
+
+### Data Persistence
+
+*   **SQLite:** When running the container with `-v mcp_chatbot_data:/app/data`, a named volume `mcp_chatbot_data` is created on the host machine. The SQLite database file (defined by `FILEBASE_URL`, e.g., `/app/data/local.db` inside the container) is stored in this volume, ensuring your chat history persists across container restarts.
+*   **PostgreSQL:** If using PostgreSQL (`USE_FILE_SYSTEM_DB=false`), persistence is handled by the external PostgreSQL server itself.
 
 ### Optional PostgreSQL Container
 
