@@ -1,0 +1,15 @@
+{
+  "extends": "../tsconfig.json", // Inherit base settings
+  "compilerOptions": {
+    "outDir": "./dist", // Output compiled JS to a dist folder
+    "rootDir": ".", // Source root is the current directory
+    "module": "NodeNext", // Use NodeNext module system for compatibility
+    "moduleResolution": "NodeNext",
+    "noEmit": false, // Ensure JS files are emitted
+    "declaration": true, // Optional: generate .d.ts files
+    "sourceMap": true, // Optional: generate source maps
+    "isolatedModules": false // Allow non-module files if needed (though index.ts is a module)
+  },
+  "include": ["./index.ts"], // Only compile index.ts
+  "exclude": ["node_modules", "dist"] // Exclude node_modules and the output dir
+}

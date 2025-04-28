@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "pnpm initial:check && next dev --turbopack",
     "build": "next build",
+    "build:server": "tsc -p custom-mcp-server/tsconfig.json",
     "start": "next start",
     "test": "vitest",
     "lint:next": "next lint",

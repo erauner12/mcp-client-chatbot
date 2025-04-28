@@ -7,8 +7,10 @@ const DEFAULT_CONFIG = {
     args: ["@playwright/mcp@latest"],
   },
   custom: {
-    command: "tsx",
-    args: ["custom-mcp-server"],
+    // Use node to run the compiled JavaScript file
+    command: "node",
+    // Point to the compiled output in the dist directory
+    args: ["custom-mcp-server/dist/index.js"],
   },
 };
 

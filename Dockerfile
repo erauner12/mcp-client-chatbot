@@ -34,6 +34,9 @@ COPY . .
 # Run this *after* copying the source code
 RUN pnpm initial:mcp-config
 
+# Build the custom MCP server (compile TS to JS)
+RUN pnpm build:server
+
 # Build the Next.js app (emits .next/standalone)
 # Ensure build command matches your project setup if different
 RUN pnpm run build
@@ -52,8 +55,16 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 # Copy the default mcp config if it exists in the build stage
-# It should exist now because we generated it in the builder stage
 COPY --from=builder /app/.mcp-config.json ./.mcp-config.json
+# Copy the compiled custom MCP server
+COPY --from=builder /app/custom-mcp-server/dist ./custom-mcp-server/dist
+
+# --- Fix for @libsql/client native addons ---
+# Copy the required native addon from the builder stage's node_modules
+# Adjust the source path based on pnpm's structure and the @libsql version
+# Find the exact path in the builder stage if this doesn't work (e.g., using `docker build --progress=plain ...` and checking logs)
+COPY --from=builder /app/node_modules/.pnpm/libsql*/node_modules/@libsql/linux-x64-musl/ \
+     ./node_modules/.pnpm/libsql*/node_modules/@libsql/linux-x64-musl/
 
 # Expose the port the app runs on
 EXPOSE 3000
