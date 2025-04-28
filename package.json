@@ -24,7 +24,12 @@
     "db:studio": "drizzle-kit studio",
     "db:migrate": "tsx src/lib/db/migrate.sqlite.ts",
     "db:pull": "drizzle-kit pull",
-    "db:check": "drizzle-kit check"
+    "db:check": "drizzle-kit check",
+    "docker:build": "docker build --build-arg USE_FILE_SYSTEM_DB=true --build-arg FILEBASE_URL=file:node_modules/local.db -t erauner12/mcp-client-chatbot:latest -t erauner12/mcp-client-chatbot:$(git rev-parse --short HEAD) .",
+    "docker:push": "docker push erauner12/mcp-client-chatbot:latest && docker push erauner12/mcp-client-chatbot:$(git rev-parse --short HEAD)",
+    "docker:build-pg": "docker build -t chatbot-pg ./docker/pg",
+    "docker:start-pg": "docker run -d --name chatbot-postgres -p 5432:5432 chatbot-pg",
+    "docker:stop-pg": "docker stop chatbot-postgres && docker rm chatbot-postgres"
   },
   "dependencies": {
     "@ai-sdk-tool/parser": "^1.0.2",

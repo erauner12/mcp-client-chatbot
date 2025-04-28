@@ -25,6 +25,11 @@ MCP Client Chatbot is a 100% community-driven open source project.
   - [🚀 Getting Started](#-getting-started)
     - [Environment Variables](#environment-variables)
     - [MCP Server Setup](#mcp-server-setup)
+  - [🐳 Docker Deployment](#-docker-deployment)
+    - [Building the Image](#building-the-image)
+    - [Pushing to Docker Hub](#pushing-to-docker-hub)
+    - [Running the Container](#running-the-container)
+    - [Optional PostgreSQL Container](#optional-postgresql-container)
   - [💡 Use Cases](#-use-cases)
   - [🗺️ Roadmap: Upcoming Features](#️-roadmap-upcoming-features)
   - [🙌 Contributing](#-contributing)
@@ -117,12 +122,17 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to get start
 The `pnpm initial` command generates a `.env` file. Add your API keys there:
 
 ```dotenv
+# .env.example content, copy to .env and fill values
 GOOGLE_GENERATIVE_AI_API_KEY=****
 OPENAI_API_KEY=****
-# ANTHROPIC_API_KEY=****
+XAI_API_KEY=****
+ANTHROPIC_API_KEY=****
+POSTGRES_URL=postgres://postgres:postgres@localhost:5432/chatbot
+FILEBASE_URL=file:node_modules/local.db
+USE_FILE_SYSTEM_DB=true
 ```
 
-SQLite is the default DB (`db.sqlite`). To use PostgreSQL, set `USE_FILE_SYSTEM_DB=false` and define `DATABASE_URL` in `.env`.
+SQLite is the default DB (`db.sqlite`). To use PostgreSQL, set `USE_FILE_SYSTEM_DB=false` and define `POSTGRES_URL` in `.env`. Ensure your Postgres server is running and accessible.
 
 -----
 
@@ -133,6 +143,76 @@ You can connect MCP tools via:
 1. **UI Setup:** Go to http://localhost:3000/mcp and configure through the interface.
 2. **Direct File Edit:** Modify `.mcp-config.json` in project root.
 3. **Custom Logic:** Edit `./custom-mcp-server/index.ts` to implement your own logic.
+
+-----
+
+## 🐳 Docker Deployment
+
+This project includes a `Dockerfile` at the root to build the Next.js application image.
+
+### Building the Image
+
+Use the provided pnpm script to build the Docker image. It tags the image with `latest` and the short Git commit hash.
+
+```bash
+# Ensure you have Docker running
+# This command looks for Dockerfile in the project root
+pnpm docker:build
+```
+
+This command executes:
+`docker build -t erauner12/mcp-client-chatbot:latest -t erauner12/mcp-client-chatbot:$(git rev-parse --short HEAD) .`
+
+### Pushing to Docker Hub
+
+After building, push the image to your Docker Hub repository (`erauner12/mcp-client-chatbot`). Ensure you are logged into Docker Hub (`docker login`).
+
+```bash
+pnpm docker:push
+```
+
+This command executes:
+`docker push erauner12/mcp-client-chatbot:latest && docker push erauner12/mcp-client-chatbot:$(git rev-parse --short HEAD)`
+
+### Running the Container
+
+You can run the built image directly using `docker run`. Remember to pass necessary environment variables.
+
+```bash
+# Example using SQLite (ensure USE_FILE_SYSTEM_DB=true in your .env or pass it here)
+# Note: Use separate -e flags for each variable and ensure no inline comments.
+# Use quotes around variable values, especially if they contain special characters.
+docker run -it --rm -p 3000:3000 \
+  -e OPENAI_API_KEY="YOUR_OPENAI_KEY" \
+  -e USE_FILE_SYSTEM_DB="true" \
+  -e FILEBASE_URL="file:/app/data/local.db" \
+  -e NEXTAUTH_SECRET="YOUR_RANDOM_SECRET" \
+  -v mcp_chatbot_data:/app/data \
+  erauner12/mcp-client-chatbot:latest
+```
+
+**Notes:**
+- Replace `YOUR_OPENAI_KEY` and `YOUR_RANDOM_SECRET` with actual values. Generate a strong secret for `NEXTAUTH_SECRET`.
+- The `-v mcp_chatbot_data:/app/data` line creates a named volume `mcp_chatbot_data` to persist the SQLite database outside the container. The internal path `/app/data` is used for the volume mount point; ensure `FILEBASE_URL` points within this mounted directory (e.g., `file:/app/data/local.db`).
+- If using PostgreSQL, ensure the `POSTGRES_URL` environment variable points to your running Postgres instance (e.g., `postgres://user:pass@host:port/db`) and set `USE_FILE_SYSTEM_DB=false`.
+
+### Optional PostgreSQL Container
+
+The project includes helper scripts to build and run a PostgreSQL container specifically for development or testing purposes, using the Dockerfile in `docker/pg/`.
+
+```bash
+# Build the Postgres helper image (tagged as chatbot-pg)
+# This uses docker/pg/Dockerfile
+pnpm docker:build-pg
+
+# Start the Postgres container (named chatbot-postgres)
+pnpm docker:start-pg
+
+# Stop and remove the Postgres container
+pnpm docker:stop-pg
+```
+
+When using this helper container, your `POSTGRES_URL` would typically be `postgres://postgres:postgres@localhost:5432/chatbot` if running the main app locally, or `postgres://postgres:postgres@chatbot-postgres:5432/chatbot` if running the main app in Docker on the same Docker network.
 
 -----
 
@@ -164,4 +244,3 @@ We're making MCP Client Chatbot even more powerful with these planned features:
 We welcome all contributions! Bug reports, feature ideas, code improvements — everything helps us build the best local AI assistant.
 
 Let’s build it together 🚀
-

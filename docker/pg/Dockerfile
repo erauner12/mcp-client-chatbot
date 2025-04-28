@@ -1,11 +1,9 @@
-FROM postgres:16-alpine
+# Use the official PostgreSQL image as a base
+FROM postgres:15-alpine
 
-ENV POSTGRES_USER=postgres
-ENV POSTGRES_PASSWORD=postgres
-ENV POSTGRES_DB=chatbot
+# Copy the initialization script to the Docker entrypoint directory
+# Scripts in /docker-entrypoint-initdb.d are run on container startup
+COPY init.sql /docker-entrypoint-initdb.d/
 
+# Expose the default PostgreSQL port
 EXPOSE 5432
-
-COPY ./init.sql /docker-entrypoint-initdb.d/
-
-VOLUME ["/var/lib/postgresql/data"] 
